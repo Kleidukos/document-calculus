@@ -1,0 +1,71 @@
+cabal-version: 3.12
+name: document-calculus
+version: 0.1.0.0
+-- synopsis:
+-- description:
+license: BSD-3-Clause
+license-file: LICENSE
+-- author:
+-- maintainer:
+-- copyright:
+category: Documentation
+build-type: Simple
+extra-doc-files: CHANGELOG.md
+
+-- extra-source-files:
+common warnings
+  ghc-options: -Wall
+
+common extensions
+  default-extensions:
+    DeriveAnyClass
+    DerivingVia
+    DuplicateRecordFields
+    NoStarIsType
+    OverloadedLabels
+    OverloadedRecordDot
+    OverloadedStrings
+    PackageImports
+    PolyKinds
+    RecordWildCards
+    RequiredTypeArguments
+    StrictData
+    TypeFamilies
+    UndecidableInstances
+    ViewPatterns
+
+  default-language: GHC2024
+
+common ghc-options
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wpartial-fields
+    -Wredundant-constraints
+    -fhide-source-paths
+    -Wno-unused-do-bind
+    -funbox-strict-fields
+    -Wunused-packages
+    -funbox-small-strict-fields
+
+library
+  import: extensions
+  import: ghc-options
+  -- cabal-gild: discover src
+  exposed-modules:
+    Document.String.Types
+
+  build-depends:
+    base ^>=4.20,
+    bound,
+    bytestring,
+    containers,
+    text,
+    text-display,
+    vector,
+
+  hs-source-dirs: src
+  default-language: GHC2024
