@@ -12,9 +12,11 @@ category: Documentation
 build-type: Simple
 extra-doc-files: CHANGELOG.md
 
--- extra-source-files:
-common warnings
-  ghc-options: -Wall
+common rts-options
+  ghc-options:
+    -rtsopts
+    -threaded
+    "-with-rtsopts=-N -T"
 
 common extensions
   default-extensions:
@@ -63,9 +65,28 @@ library
     bound,
     bytestring,
     containers,
+    effectful-core,
     text,
     text-display,
     vector,
 
   hs-source-dirs: src
-  default-language: GHC2024
+
+test-suite document-test
+  import: extensions
+  import: ghc-options
+  import: rts-options
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  -- cabal-gild: discover test --exclude=test/Main.hs
+  other-modules:
+    Document.StringTest
+    TestUtils
+
+  hs-source-dirs: test
+  build-depends:
+    base,
+    document-calculus,
+    effectful-core,
+    tasty,
+    tasty-hunit,
