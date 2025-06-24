@@ -62,7 +62,6 @@ library
 
   build-depends:
     base ^>=4.20,
-    bound,
     bytestring,
     containers,
     effectful-core,
@@ -86,7 +85,10 @@ test-suite document-test
   hs-source-dirs: test
   build-depends:
     base,
+    containers,
     document-calculus,
     effectful-core,
     tasty,
     tasty-hunit,
+    text,
+    vector,

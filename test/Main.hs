@@ -3,9 +3,9 @@ module Main where
 import Data.List (List)
 import System.IO
 import Test.Tasty
-import TestUtils
 
 import Document.StringTest qualified as StringTest
+import TestUtils
 
 main :: IO ()
 main = do
@@ -14,6 +14,6 @@ main = do
   defaultMain $ testGroup "Tests" spec
 
 specs :: List (TestEff TestTree)
-specs = [
-  StringTest.spec 
+specs =
+  [ StringTest.spec
   ]

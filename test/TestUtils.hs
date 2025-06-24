@@ -2,14 +2,14 @@ module TestUtils where
 
 import Data.Function
 import Effectful
+import Effectful.Fail (Fail)
+import Effectful.Fail qualified as Fail
+import Effectful.State.Static.Local (State)
+import Effectful.State.Static.Local qualified as State
 import GHC.Stack
 import Test.Tasty (TestTree)
 import Test.Tasty qualified as Test
 import Test.Tasty.HUnit qualified as Test
-import Effectful.State.Static.Local (State)
-import Effectful.State.Static.Local qualified as State
-import Effectful.Fail (Fail)
-import Effectful.Fail qualified as Fail
 
 import Document.String.Types
 
@@ -31,21 +31,20 @@ assertRight :: HasCallStack => Either a b -> TestEff b
 assertRight (Left _a) = liftIO $ Test.assertFailure "Test return Left instead of Right"
 assertRight (Right b) = pure b
 
-testThis :: String -> TestEff () -> TestEff TestTree
+testThis :: HasCallStack => String -> TestEff () -> TestEff TestTree
 testThis name assertion = do
   let test = runTestEff assertion
   pure $
     Test.testCase name test
 
-testThese :: String -> [TestEff TestTree] -> TestEff TestTree
+testThese :: HasCallStack => String -> [TestEff TestTree] -> TestEff TestTree
 testThese groupName tests = fmap (Test.testGroup groupName) newTests
   where
     newTests :: TestEff [TestTree]
     newTests = sequenceA tests
 
-assertBool :: Bool -> TestEff ()
+assertBool :: HasCallStack => Bool -> TestEff ()
 assertBool boolean = liftIO $ Test.assertBool "" boolean
 
-assertEqual :: (Eq a, Show a) => a -> a -> TestEff ()
+assertEqual :: (Eq a, HasCallStack, Show a) => a -> a -> TestEff ()
 assertEqual actual expected = liftIO $ Test.assertEqual "" actual expected
-

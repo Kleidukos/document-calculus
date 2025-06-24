@@ -5,11 +5,12 @@ import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector (Vector)
+import Data.Vector qualified as Vector
+import Debug.Trace (traceM)
 import Effectful
 import Effectful.Fail
 import Effectful.State.Static.Local (State)
 import Effectful.State.Static.Local qualified as State
-import qualified Data.Vector as Vector
 
 data StringExpr
   = SLiteral Text
@@ -22,12 +23,15 @@ data StringExpr
       StringExpr
       -- ^ Body
   | Var Text
-  | StringTemplate (Vector StringExpr)
+  | StringTemplate Template
   deriving stock (Eq, Ord, Show)
 
-data TemplatePart 
-  = TemplateLiteral Text
-  | TemplateExpr StringExpr
+newtype Template = Template {getTemplateParts :: Vector TemplatePart}
+  deriving newtype (Eq, Ord, Show)
+
+data TemplatePart
+  = TemplateString Text
+  | InterpolateExpression StringExpr
   deriving stock (Eq, Ord, Show)
 
 data Env = Env
@@ -39,15 +43,18 @@ emptyEnv :: Env
 emptyEnv = Env mempty
 
 addBinding :: State Env :> es => Text -> StringExpr -> Eff es ()
-addBinding name expression = State.modify $ \env ->
-  let newBindings = Map.insert name expression env.bindings
-   in env{bindings = newBindings}
+addBinding name expression = do
+  traceM $ "Adding " <> Text.unpack name <> " to bindings"
+  State.modify $ \env ->
+    let newBindings = Map.insert name expression env.bindings
+     in env{bindings = newBindings}
 
 lookupBinding :: State Env :> es => Text -> Eff es StringExpr
 lookupBinding name = do
   Env{bindings} <- State.get
   case Map.lookup name bindings of
-    Nothing -> error $ "Could not find bindings " <> Text.unpack name
+    Nothing -> do
+      error $ "Could not find bindings " <> Text.unpack name <> "\nAvailable bindings: " <> show bindings
     Just value -> pure value
 
 data StringType
@@ -65,10 +72,28 @@ evalExpr (Let name expression body) = do
   evalExpr body
 evalExpr (Var name) =
   lookupBinding name
-evalExpr (StringTemplate t) = undefined
+evalExpr (StringTemplate _) = error "Don't evaluate templates, idiot."
 
-desugarTemplate :: Vector TemplatePart -> Vector StringExpr
-desugarTemplate template  = case Vector.uncons template of
-  Nothing ->  Vector.empty
-  Just (p, ps) -> 
-    
+desugar :: StringExpr -> Eff es StringExpr
+desugar (SLiteral t) = pure $ SLiteral t
+desugar (Concat t1 t2) = Concat <$> desugar t1 <*> desugar t2
+desugar (Let name body expression) = Let name <$> desugar body <*> desugar expression
+desugar (Var name) = pure $ Var name
+desugar (StringTemplate t) = do
+  result <- desugarTemplate t
+  pure $ Vector.foldr1 (Concat) result
+
+desugarTemplate :: Template -> Eff es (Vector StringExpr)
+desugarTemplate (Template template) = case Vector.uncons template of
+  Nothing -> pure Vector.empty
+  Just (p, ps) -> do
+    desugaredP <- desugarTemplatePart p
+    desugaredPS <- desugarTemplate (Template ps)
+    pure $
+      Vector.cons
+        desugaredP
+        desugaredPS
+
+desugarTemplatePart :: TemplatePart -> Eff es StringExpr
+desugarTemplatePart (TemplateString s) = pure (SLiteral s)
+desugarTemplatePart (InterpolateExpression e) = desugar e
