@@ -31,13 +31,13 @@ assertRight :: HasCallStack => Either a b -> TestEff b
 assertRight (Left _a) = liftIO $ Test.assertFailure "Test return Left instead of Right"
 assertRight (Right b) = pure b
 
-testThis :: HasCallStack => String -> TestEff () -> TestEff TestTree
+testThis :: String -> TestEff () -> TestEff TestTree
 testThis name assertion = do
   let test = runTestEff assertion
   pure $
     Test.testCase name test
 
-testThese :: HasCallStack => String -> [TestEff TestTree] -> TestEff TestTree
+testThese :: String -> [TestEff TestTree] -> TestEff TestTree
 testThese groupName tests = fmap (Test.testGroup groupName) newTests
   where
     newTests :: TestEff [TestTree]

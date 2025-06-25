@@ -58,6 +58,8 @@ library
   import: ghc-options
   -- cabal-gild: discover src
   exposed-modules:
+    Document.Article.Types
+    Document.String.Expression
     Document.String.Types
 
   build-depends:

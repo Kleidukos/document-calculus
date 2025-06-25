@@ -1,13 +1,12 @@
 module Document.StringTest where
 
 import Data.Vector qualified as Vector
-import GHC.Stack
 import Test.Tasty
 
 import Document.String.Types
 import TestUtils
 
-spec :: HasCallStack => TestEff TestTree
+spec :: TestEff TestTree
 spec =
   testThese
     "Evaluate String calculus"

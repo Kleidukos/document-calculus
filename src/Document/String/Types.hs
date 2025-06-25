@@ -1,99 +1,81 @@
 module Document.String.Types where
 
-import Data.Map (Map)
-import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import Debug.Trace (traceM)
 import Effectful
-import Effectful.Fail
+import Effectful.Error.Static (Error)
+import Effectful.Error.Static qualified as Error
 import Effectful.State.Static.Local (State)
 import Effectful.State.Static.Local qualified as State
 
-data StringExpr
-  = SLiteral Text
-  | Concat StringExpr StringExpr
-  | Let
-      Text
-      -- ^ Binding
-      StringExpr
-      -- ^ Expression
-      StringExpr
-      -- ^ Body
-  | Var Text
-  | StringTemplate Template
-  deriving stock (Eq, Ord, Show)
-
-newtype Template = Template {getTemplateParts :: Vector TemplatePart}
-  deriving newtype (Eq, Ord, Show)
-
-data TemplatePart
-  = TemplateString Text
-  | InterpolateExpression StringExpr
-  deriving stock (Eq, Ord, Show)
-
-data Env = Env
-  { bindings :: Map Text StringExpr
-  }
-  deriving stock (Eq, Ord, Show)
-
-emptyEnv :: Env
-emptyEnv = Env mempty
-
-addBinding :: State Env :> es => Text -> StringExpr -> Eff es ()
-addBinding name expression = do
-  traceM $ "Adding " <> Text.unpack name <> " to bindings"
-  State.modify $ \env ->
-    let newBindings = Map.insert name expression env.bindings
-     in env{bindings = newBindings}
-
-lookupBinding :: State Env :> es => Text -> Eff es StringExpr
-lookupBinding name = do
-  Env{bindings} <- State.get
-  case Map.lookup name bindings of
-    Nothing -> do
-      error $ "Could not find bindings " <> Text.unpack name <> "\nAvailable bindings: " <> show bindings
-    Just value -> pure value
+import Document.String.Expression
 
 data StringType
-  = StringType
+  = TString
   deriving stock (Eq, Ord, Show)
 
-evalExpr :: (Fail :> es, State Env :> es) => StringExpr -> Eff es StringExpr
-evalExpr (SLiteral t) = pure $ SLiteral t
-evalExpr (Concat s1 s2) = do
-  SLiteral evaluated1 <- evalExpr s1
-  SLiteral evaluated2 <- evalExpr s2
-  pure $ SLiteral (evaluated1 <> evaluated2)
-evalExpr (Let name expression body) = do
-  addBinding name expression
-  evalExpr body
-evalExpr (Var name) =
-  lookupBinding name
-evalExpr (StringTemplate _) = error "Don't evaluate templates, idiot."
+data TypeCheckError
+  = ExpectedLiterals
+  | NoVarFound Text
+  deriving stock (Eq, Ord, Show)
 
-desugar :: StringExpr -> Eff es StringExpr
-desugar (SLiteral t) = pure $ SLiteral t
-desugar (Concat t1 t2) = Concat <$> desugar t1 <*> desugar t2
-desugar (Let name body expression) = Let name <$> desugar body <*> desugar expression
-desugar (Var name) = pure $ Var name
-desugar (StringTemplate t) = do
-  result <- desugarTemplate t
-  pure $ Vector.foldr1 (Concat) result
+data TypeContextElement
+  = BoundVar Text StringType
+  | BoundTypeVar Text
+  deriving stock (Eq, Ord, Show)
 
-desugarTemplate :: Template -> Eff es (Vector StringExpr)
-desugarTemplate (Template template) = case Vector.uncons template of
-  Nothing -> pure Vector.empty
-  Just (p, ps) -> do
-    desugaredP <- desugarTemplatePart p
-    desugaredPS <- desugarTemplate (Template ps)
-    pure $
-      Vector.cons
-        desugaredP
-        desugaredPS
+isBoundVar :: TypeContextElement -> Bool
+isBoundVar (BoundVar _ _) = True
+isBoundVar _ = False
 
-desugarTemplatePart :: TemplatePart -> Eff es StringExpr
-desugarTemplatePart (TemplateString s) = pure (SLiteral s)
-desugarTemplatePart (InterpolateExpression e) = desugar e
+boundVarEquals :: TypeContextElement -> Text -> Bool
+boundVarEquals (BoundVar x _) y = x == y
+boundVarEquals _ _ = False
+
+newtype TypeContext = TypeContext {typeContext :: Vector TypeContextElement}
+  deriving stock (Eq, Ord, Show)
+
+addToTypeContext :: State TypeContext :> es => TypeContextElement -> Eff es ()
+addToTypeContext element = do
+  traceM $ "Adding " <> show element <> " to type context"
+  State.modify $ \env ->
+    let newBindings = Vector.cons element env.typeContext
+     in env{typeContext = newBindings}
+
+lookupTypeContext
+  :: State TypeContext :> es
+  => Text
+  -> Eff es (Maybe StringType)
+lookupTypeContext element = do
+  TypeContext context <- State.get
+  case Vector.find (\e -> e `boundVarEquals` element) context of
+    Just (BoundVar _ t) -> pure $ Just t
+    _ -> pure Nothing
+
+typecheck
+  :: ( Error (TypeCheckError) :> es
+     , State (TypeContext) :> es
+     )
+  => StringExpr -> Eff es StringType
+typecheck (SLiteral _) = pure TString
+typecheck (Concat e1 e2) = do
+  t1 <- typecheck e1
+  t2 <- typecheck e2
+  case (t1, t2) of
+    (TString, TString) -> pure TString
+    _ -> Error.throwError ExpectedLiterals
+typecheck (Let name body expression) = do
+  t1 <- typecheck body
+  addToTypeContext (BoundVar name t1)
+  typecheck expression
+typecheck (Var name) = do
+  result <- lookupTypeContext name
+  case result of
+    Just t -> pure t
+    Nothing -> Error.throwError $ NoVarFound name
+typecheck (StringTemplate template) = undefined
+
+typecheckTemplate :: Template -> Eff es _
+typecheckTemplate = undefined
