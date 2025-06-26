@@ -14,6 +14,7 @@ import Document.String.Expression
 
 data StringType
   = TString
+  | TList
   deriving stock (Eq, Ord, Show)
 
 data TypeCheckError
@@ -24,6 +25,7 @@ data TypeCheckError
 data TypeContextElement
   = BoundVar Text StringType
   | BoundTypeVar Text
+  | TemplateContext StringType
   deriving stock (Eq, Ord, Show)
 
 isBoundVar :: TypeContextElement -> Bool
@@ -33,6 +35,10 @@ isBoundVar _ = False
 boundVarEquals :: TypeContextElement -> Text -> Bool
 boundVarEquals (BoundVar x _) y = x == y
 boundVarEquals _ _ = False
+
+isTemplateContext :: TypeContextElement -> Bool
+isTemplateContext (TemplateContext _) = True
+isTemplateContext _ = False
 
 newtype TypeContext = TypeContext {typeContext :: Vector TypeContextElement}
   deriving stock (Eq, Ord, Show)
@@ -53,6 +59,16 @@ lookupTypeContext element = do
   case Vector.find (\e -> e `boundVarEquals` element) context of
     Just (BoundVar _ t) -> pure $ Just t
     _ -> pure Nothing
+
+-- FIXME:Use an Error effect to replace `error`
+getTemplateContextType
+  :: State TypeContext :> es
+  => Eff es StringType
+getTemplateContextType = do
+  TypeContext context <- State.get
+  case Vector.find (\e -> isTemplateContext e) context of
+    Just (TemplateContext t) -> pure t
+    _ -> error "No template context type :("
 
 typecheck
   :: ( Error (TypeCheckError) :> es
@@ -77,5 +93,10 @@ typecheck (Var name) = do
     Nothing -> Error.throwError $ NoVarFound name
 typecheck (StringTemplate template) = undefined
 
-typecheckTemplate :: Template -> Eff es _
-typecheckTemplate = undefined
+typecheckTemplate :: State TypeContext :> es => Template -> Eff es StringType
+typecheckTemplate (Template templateParts) = case Vector.uncons templateParts of
+  Nothing -> pure TList
+  Just (p, ps) -> undefined
+
+typecheckTemplatePart :: State TypeContext :> es => Template -> Eff es StringType
+typecheckTemplatePart = undefined

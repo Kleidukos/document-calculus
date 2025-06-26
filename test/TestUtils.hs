@@ -11,7 +11,7 @@ import Test.Tasty (TestTree)
 import Test.Tasty qualified as Test
 import Test.Tasty.HUnit qualified as Test
 
-import Document.String.Types
+import Document.String.Expression
 
 type TestEff = Eff '[State Env, Fail, IOE]
 

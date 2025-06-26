@@ -3,7 +3,7 @@ module Document.Article.Types where
 import Data.Text (Text)
 import Data.Vector (Vector)
 
-import Document.String.Types
+import Document.String.Expression
 
 data Inline
   = InlineString Text

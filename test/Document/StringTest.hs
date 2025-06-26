@@ -3,8 +3,8 @@ module Document.StringTest where
 import Data.Vector qualified as Vector
 import Test.Tasty
 
-import Document.String.Types
 import TestUtils
+import Document.String.Expression
 
 spec :: TestEff TestTree
 spec =
