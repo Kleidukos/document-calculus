@@ -43,6 +43,9 @@ isTemplateContext _ = False
 newtype TypeContext = TypeContext {typeContext :: Vector TypeContextElement}
   deriving stock (Eq, Ord, Show)
 
+emptyTypeContext :: TypeContext
+emptyTypeContext = TypeContext Vector.empty
+
 addToTypeContext :: State TypeContext :> es => TypeContextElement -> Eff es ()
 addToTypeContext element = do
   traceM $ "Adding " <> show element <> " to type context"

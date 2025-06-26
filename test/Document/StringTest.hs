@@ -3,8 +3,9 @@ module Document.StringTest where
 import Data.Vector qualified as Vector
 import Test.Tasty
 
-import TestUtils
 import Document.String.Expression
+import Document.String.Types
+import TestUtils
 
 spec :: TestEff TestTree
 spec =
@@ -14,6 +15,10 @@ spec =
         "String Program"
         [ testThis "concatenation" testConcatenation
         , testThis "let-bindings" testLetBindings
+        ]
+    , testThese
+        "Typecheck string programs"
+        [ testThis "Typecheck concat" testConcatTypechecks
         ]
     , testThese
         "String template literals"
@@ -45,6 +50,24 @@ testConcatenation = do
   assertEqual
     (SLiteral "hello world")
     result
+
+testConcatTypechecks :: TestEff ()
+testConcatTypechecks = do
+  let expr =
+        Let
+          "x"
+          (SLiteral "a")
+          ( Concat
+              (Var "x")
+              ( Concat
+                  (SLiteral "b")
+                  (Var "x")
+              )
+          )
+  r <- typecheck expr
+  assertEqual
+    r
+    TString
 
 testEvaluationOfDesugaredTemplate :: TestEff ()
 testEvaluationOfDesugaredTemplate = do

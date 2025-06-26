@@ -2,6 +2,8 @@ module TestUtils where
 
 import Data.Function
 import Effectful
+import Effectful.Error.Static (Error)
+import Effectful.Error.Static qualified as Error
 import Effectful.Fail (Fail)
 import Effectful.Fail qualified as Fail
 import Effectful.State.Static.Local (State)
@@ -12,17 +14,24 @@ import Test.Tasty qualified as Test
 import Test.Tasty.HUnit qualified as Test
 
 import Document.String.Expression
+import Document.String.Types
 
-type TestEff = Eff '[State Env, Fail, IOE]
+type TestEff = Eff '[Error TypeCheckError, State TypeContext, State Env, Fail, IOE]
 
 runTestEff
-  :: Eff [State Env, Fail, IOE] a
+  :: TestEff a
   -> IO a
 runTestEff action = do
-  action
-    & State.evalState emptyEnv
-    & Fail.runFailIO
-    & runEff
+  result <-
+    action
+      & Error.runErrorNoCallStack
+      & State.evalState emptyTypeContext
+      & State.evalState emptyEnv
+      & Fail.runFailIO
+      & runEff
+  case result of
+    Right a -> pure a
+    Left e -> error $ show e
 
 assertFailure :: HasCallStack => MonadIO m => String -> m ()
 assertFailure = liftIO . Test.assertFailure
