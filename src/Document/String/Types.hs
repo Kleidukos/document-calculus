@@ -3,7 +3,6 @@ module Document.String.Types where
 import Data.Text (Text)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
-import Debug.Trace (traceM)
 import Effectful
 import Effectful.Error.Static (Error)
 import Effectful.Error.Static qualified as Error
@@ -47,8 +46,7 @@ emptyTypeContext :: TypeContext
 emptyTypeContext = TypeContext Vector.empty
 
 addToTypeContext :: State TypeContext :> es => TypeContextElement -> Eff es ()
-addToTypeContext element = do
-  traceM $ "Adding " <> show element <> " to type context"
+addToTypeContext element =
   State.modify $ \env ->
     let newBindings = Vector.cons element env.typeContext
      in env{typeContext = newBindings}
@@ -94,12 +92,12 @@ typecheck (Var name) = do
   case result of
     Just t -> pure t
     Nothing -> Error.throwError $ NoVarFound name
-typecheck (StringTemplate template) = undefined
+typecheck (StringTemplate _template) = undefined
 
-typecheckTemplate :: State TypeContext :> es => Template -> Eff es StringType
+typecheckTemplate :: Template -> Eff es StringType
 typecheckTemplate (Template templateParts) = case Vector.uncons templateParts of
   Nothing -> pure TList
   Just (p, ps) -> undefined
 
-typecheckTemplatePart :: State TypeContext :> es => Template -> Eff es StringType
+typecheckTemplatePart :: Template -> Eff es StringType
 typecheckTemplatePart = undefined

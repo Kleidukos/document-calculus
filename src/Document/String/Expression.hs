@@ -6,7 +6,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
-import Debug.Trace (traceM)
 import Effectful
 import Effectful.Fail
 import Effectful.State.Static.Local (State)
@@ -44,8 +43,7 @@ emptyEnv :: Env
 emptyEnv = Env mempty
 
 addBinding :: State Env :> es => Text -> StringExpr -> Eff es ()
-addBinding name expression = do
-  traceM $ "Adding " <> Text.unpack name <> " to bindings"
+addBinding name expression =
   State.modify $ \env ->
     let newBindings = Map.insert name expression env.bindings
      in env{bindings = newBindings}
