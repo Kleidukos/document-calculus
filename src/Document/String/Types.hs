@@ -19,6 +19,7 @@ data StringType
 data TypeCheckError
   = ExpectedLiterals
   | NoVarFound Text
+  | NoTemplateContextType
   deriving stock (Eq, Ord, Show)
 
 data TypeContextElement
@@ -39,11 +40,14 @@ isTemplateContext :: TypeContextElement -> Bool
 isTemplateContext (TemplateContext _) = True
 isTemplateContext _ = False
 
-newtype TypeContext = TypeContext {typeContext :: Vector TypeContextElement}
+data TypeContext = TypeContext
+  { typeContext :: Vector TypeContextElement
+  , templateContext :: Maybe StringType
+  }
   deriving stock (Eq, Ord, Show)
 
 emptyTypeContext :: TypeContext
-emptyTypeContext = TypeContext Vector.empty
+emptyTypeContext = TypeContext Vector.empty Nothing
 
 addToTypeContext :: State TypeContext :> es => TypeContextElement -> Eff es ()
 addToTypeContext element =
@@ -51,25 +55,33 @@ addToTypeContext element =
     let newBindings = Vector.cons element env.typeContext
      in env{typeContext = newBindings}
 
+setTemplateContext
+  :: State TypeContext :> es
+  => StringType
+  -> Eff es ()
+setTemplateContext t = State.modify $ \env ->
+  env{templateContext = Just t}
+
+getTemplateContextType
+  :: ( Error TypeCheckError :> es
+     , State TypeContext :> es
+     )
+  => Eff es StringType
+getTemplateContextType = do
+  TypeContext _ templateContext <- State.get
+  case templateContext of
+    Just t -> pure t
+    _ -> Error.throwError NoTemplateContextType
+
 lookupTypeContext
   :: State TypeContext :> es
   => Text
   -> Eff es (Maybe StringType)
 lookupTypeContext element = do
-  TypeContext context <- State.get
+  TypeContext context _ <- State.get
   case Vector.find (\e -> e `boundVarEquals` element) context of
     Just (BoundVar _ t) -> pure $ Just t
     _ -> pure Nothing
-
--- FIXME:Use an Error effect to replace `error`
-getTemplateContextType
-  :: State TypeContext :> es
-  => Eff es StringType
-getTemplateContextType = do
-  TypeContext context <- State.get
-  case Vector.find (\e -> isTemplateContext e) context of
-    Just (TemplateContext t) -> pure t
-    _ -> error "No template context type :("
 
 typecheck
   :: ( Error (TypeCheckError) :> es
@@ -92,12 +104,31 @@ typecheck (Var name) = do
   case result of
     Just t -> pure t
     Nothing -> Error.throwError $ NoVarFound name
-typecheck (StringTemplate _template) = undefined
+typecheck (StringTemplate template) = do
+  setTemplateContext TString
+  typecheckTemplate template
 
-typecheckTemplate :: Template -> Eff es StringType
+typecheckTemplate
+  :: ( Error TypeCheckError :> es
+     , State TypeContext :> es
+     )
+  => Template -> Eff es StringType
 typecheckTemplate (Template templateParts) = case Vector.uncons templateParts of
   Nothing -> pure TList
-  Just (p, ps) -> undefined
+  Just (p, ps) -> do
+    contextType <- getTemplateContextType
+    partType <- typecheckTemplatePart p
+    if partType == contextType
+      then typecheckTemplate (Template ps)
+      else error "Type error"
 
-typecheckTemplatePart :: Template -> Eff es StringType
-typecheckTemplatePart = undefined
+typecheckTemplatePart
+  :: ( Error TypeCheckError :> es
+     , State TypeContext :> es
+     )
+  => TemplatePart -> Eff es StringType
+typecheckTemplatePart part = do
+  case part of
+    TemplateString _ -> pure TString
+    InterpolateExpression e -> typecheck e
+    TemplateSet _ e -> typecheck e

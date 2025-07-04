@@ -17,12 +17,13 @@ spec =
         , testThis "let-bindings" testLetBindings
         ]
     , testThese
-        "Typecheck string programs"
-        [ testThis "Typecheck concat" testConcatTypechecks
+        "Template Desugaring"
+        [ testThis "Evaluate a desugared template" testEvaluationOfDesugaredTemplate
         ]
     , testThese
-        "String template literals"
-        [ testThis "Evaluate a desugared template" testEvaluationOfDesugaredTemplate
+        "Typecheck string programs"
+        [ testThis "Typecheck concat" testConcatTypechecks
+        , testThis "Typecheck template" testThatTemplateTypechecks
         ]
     ]
 
@@ -64,6 +65,28 @@ testConcatTypechecks = do
                   (Var "x")
               )
           )
+  r <- typecheck expr
+  assertEqual
+    r
+    TString
+
+testThatTemplateTypechecks :: TestEff ()
+testThatTemplateTypechecks = do
+  let expr =
+        Let
+          "world"
+          (SLiteral "world")
+          ( StringTemplate
+              ( Template
+                  ( Vector.fromList
+                      [ TemplateString "Hello"
+                      , InterpolateExpression
+                          (Var "world")
+                      ]
+                  )
+              )
+          )
+
   r <- typecheck expr
   assertEqual
     r

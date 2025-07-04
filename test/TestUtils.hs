@@ -22,16 +22,15 @@ runTestEff
   :: TestEff a
   -> IO a
 runTestEff action = do
-  result <-
-    action
-      & Error.runErrorNoCallStack
-      & State.evalState emptyTypeContext
-      & State.evalState emptyEnv
-      & Fail.runFailIO
-      & runEff
-  case result of
-    Right a -> pure a
-    Left e -> error $ show e
+  action
+    & Error.runErrorWith errorHandler
+    & State.evalState emptyTypeContext
+    & State.evalState emptyEnv
+    & Fail.runFailIO
+    & runEff
+
+errorHandler :: CallStack -> TypeCheckError -> Eff es a
+errorHandler = error . prettyCallStack
 
 assertFailure :: HasCallStack => MonadIO m => String -> m ()
 assertFailure = liftIO . Test.assertFailure
