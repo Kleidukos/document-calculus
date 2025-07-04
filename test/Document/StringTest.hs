@@ -80,7 +80,7 @@ testThatTemplateTypechecks = do
               ( Template
                   ( Vector.fromList
                       [ TemplateString "Hello"
-                      , InterpolateExpression
+                      , TemplateExpression
                           (Var "world")
                       ]
                   )
@@ -98,7 +98,7 @@ testEvaluationOfDesugaredTemplate = do
         Template
           ( Vector.fromList
               [ TemplateString "Hello"
-              , InterpolateExpression (Var "world")
+              , TemplateExpression (Var "world")
               ]
           )
   let stringTemplate =

@@ -30,7 +30,7 @@ newtype Template = Template {getTemplateParts :: Vector TemplatePart}
 
 data TemplatePart
   = TemplateString Text
-  | InterpolateExpression StringExpr
+  | TemplateExpression StringExpr
   | TemplateSet Text StringExpr
   deriving stock (Eq, Ord, Show)
 
@@ -102,5 +102,5 @@ desugarTemplate (Template template) = case Vector.uncons template of
 
 desugarTemplatePart :: TemplatePart -> Eff es StringExpr
 desugarTemplatePart (TemplateString s) = pure (SLiteral s)
-desugarTemplatePart (InterpolateExpression e) = desugar e
+desugarTemplatePart (TemplateExpression e) = desugar e
 desugarTemplatePart (TemplateSet _ _) = undefined

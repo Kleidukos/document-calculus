@@ -137,7 +137,7 @@ typecheckTemplatePart part = do
   contextType <- getTemplateContextType
   case part of
     TemplateString _ -> pure contextType
-    InterpolateExpression e -> do 
+    TemplateExpression e -> do 
       eType <- typecheck e
       if eType == contextType
       then pure contextType
