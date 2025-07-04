@@ -13,13 +13,14 @@ import Document.String.Expression
 
 data StringType
   = TString
-  | TList
+  | TList StringType
   deriving stock (Eq, Ord, Show)
 
 data TypeCheckError
   = ExpectedLiterals
   | NoVarFound Text
   | NoTemplateContextType
+  | TypeCheckPanic
   deriving stock (Eq, Ord, Show)
 
 data TypeContextElement
@@ -106,21 +107,26 @@ typecheck (Var name) = do
     Nothing -> Error.throwError $ NoVarFound name
 typecheck (StringTemplate template) = do
   setTemplateContext TString
-  typecheckTemplate template
+  result <- typecheckTemplate template
+  if result == TList TString
+    then pure TString
+    else Error.throwError TypeCheckPanic
 
 typecheckTemplate
   :: ( Error TypeCheckError :> es
      , State TypeContext :> es
      )
   => Template -> Eff es StringType
-typecheckTemplate (Template templateParts) = case Vector.uncons templateParts of
-  Nothing -> pure TList
-  Just (p, ps) -> do
-    contextType <- getTemplateContextType
-    partType <- typecheckTemplatePart p
-    if partType == contextType
-      then typecheckTemplate (Template ps)
-      else error "Type error"
+typecheckTemplate (Template templateParts) = do
+  contextType <- getTemplateContextType
+  case Vector.uncons templateParts of
+    Nothing -> do
+      pure $ TList contextType
+    Just (p, ps) -> do
+      partType <- typecheckTemplatePart p
+      if partType == contextType
+        then typecheckTemplate (Template ps)
+        else Error.throwError TypeCheckPanic
 
 typecheckTemplatePart
   :: ( Error TypeCheckError :> es
@@ -128,7 +134,12 @@ typecheckTemplatePart
      )
   => TemplatePart -> Eff es StringType
 typecheckTemplatePart part = do
+  contextType <- getTemplateContextType
   case part of
-    TemplateString _ -> pure TString
-    InterpolateExpression e -> typecheck e
+    TemplateString _ -> pure contextType
+    InterpolateExpression e -> do 
+      eType <- typecheck e
+      if eType == contextType
+      then pure contextType
+      else Error.throwError TypeCheckPanic
     TemplateSet _ e -> typecheck e
