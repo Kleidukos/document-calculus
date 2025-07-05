@@ -18,12 +18,13 @@ spec =
         ]
     , testThese
         "Template Desugaring"
-        [ testThis "Evaluate a desugared template" testEvaluationOfDesugaredTemplate
+        [ testThis "Desugar template" testEvaluationOfDesugaredTemplate
+        , testThis "Desugar Foreach" testDesugarTemplateForeach
         ]
     , testThese
         "Typecheck string programs"
         [ testThis "Typecheck concat" testConcatTypechecks
-        , testThis "Typecheck template" testThatTemplateTypechecks
+        , testThis "Typecheck template concatenation" testThatTemplateTypechecks
         ]
     ]
 

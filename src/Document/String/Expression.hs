@@ -32,6 +32,13 @@ data TemplatePart
   = TemplateString Text
   | TemplateExpression StringExpr
   | TemplateSet Text StringExpr
+  | TemplateSplice StringExpr
+  | TemplateForeach StringExpr StringType Template
+  deriving stock (Eq, Ord, Show)
+
+data StringType
+  = TString
+  | TList StringType
   deriving stock (Eq, Ord, Show)
 
 data Env = Env
@@ -104,3 +111,5 @@ desugarTemplatePart :: TemplatePart -> Eff es StringExpr
 desugarTemplatePart (TemplateString s) = pure (SLiteral s)
 desugarTemplatePart (TemplateExpression e) = desugar e
 desugarTemplatePart (TemplateSet _ _) = undefined
+desugarTemplatePart (TemplateSplice e) = desugar e
+desugarTemplatePart (TemplateForeach e t template) = undefined

@@ -4,6 +4,7 @@ import Data.List (List)
 import System.IO
 import Test.Tasty
 
+import Document.ArticleTest qualified as ArticleTest
 import Document.StringTest qualified as StringTest
 import TestUtils
 
@@ -16,4 +17,5 @@ main = do
 specs :: List (TestEff TestTree)
 specs =
   [ StringTest.spec
+  , ArticleTest.spec
   ]

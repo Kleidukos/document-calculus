@@ -81,6 +81,7 @@ test-suite document-test
   main-is: Main.hs
   -- cabal-gild: discover test --exclude=test/Main.hs
   other-modules:
+    Document.ArticleTest
     Document.StringTest
     TestUtils
 

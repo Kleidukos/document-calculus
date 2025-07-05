@@ -11,11 +11,6 @@ import Effectful.State.Static.Local qualified as State
 
 import Document.String.Expression
 
-data StringType
-  = TString
-  | TList StringType
-  deriving stock (Eq, Ord, Show)
-
 data TypeCheckError
   = ExpectedLiterals
   | NoVarFound Text
@@ -137,9 +132,9 @@ typecheckTemplatePart part = do
   contextType <- getTemplateContextType
   case part of
     TemplateString _ -> pure contextType
-    TemplateExpression e -> do 
+    TemplateExpression e -> do
       eType <- typecheck e
       if eType == contextType
-      then pure contextType
-      else Error.throwError TypeCheckPanic
+        then pure contextType
+        else Error.throwError TypeCheckPanic
     TemplateSet _ e -> typecheck e
